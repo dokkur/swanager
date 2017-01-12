@@ -8,6 +8,8 @@ import (
 var (
 	// Port of API server
 	Port string
+    MongoURL string
+    MongoDatabase string
 )
 
 func init() {
@@ -16,6 +18,9 @@ func init() {
 	flag.Parse()
 
 	Port = getEnvValue("SWANAGER_PORT", Port)
+
+	MongoURL = getEnvValue("MONGO_URL", "mongodb://127.0.0.1:27017/")
+	MongoDatabase = getEnvValue("MONGO_DATABASE", "swanager")
 }
 
 func getEnvValue(varName string, currentValue string) string {

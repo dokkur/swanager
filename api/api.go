@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/da4nik/books/config"
+	"github.com/da4nik/swanager/config"
 	"github.com/da4nik/swanager/api/service"
 	"github.com/da4nik/swanager/core/auth"
 	"github.com/gin-gonic/gin"
