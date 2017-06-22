@@ -334,9 +334,9 @@ func dirSize(service *entities.Service, vol *entities.ServiceVolume, wg *sync.Wa
 	root := getMountPath(service, *vol)
 
 	filepath.Walk(root, func(_ string, info os.FileInfo, err error) error {
-    if err != nul {
-      return err
-    }
+		if err != nul {
+			return err
+		}
 		if info != nil && !info.IsDir() {
 			size += info.Size()
 		}
