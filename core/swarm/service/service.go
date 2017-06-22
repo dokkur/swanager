@@ -329,18 +329,6 @@ func LoadVolumeSizes(service *entities.Service) {
 
 func dirSize(service *entities.Service, vol *entities.ServiceVolume, wg *sync.WaitGroup) {
 	defer wg.Done()
-	var size int64
-
 	root := getMountPath(service, *vol)
-
-	filepath.Walk(root, func(_ string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info != nil && !info.IsDir() {
-			size += info.Size()
-		}
-		return err
-	})
-	vol.Size = size
+	vol.Size = 0
 }
