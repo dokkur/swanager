@@ -49,22 +49,31 @@ type ServiceVolume struct {
 	Size    int64  `json:"size,omitempty" bson:"-"`
 }
 
+// FrontendEndpoint - represents frontend endpoint
+type FrontendEndpoint struct {
+	Domain       string `json:"domain"`
+	InternalPort uint32 `json:"internal_port"`
+	ExternalPort uint32 `json:"external_port"`
+	Disabled     bool   `json:"disabled"`
+}
+
 // Service describes service entity
 type Service struct {
-	ID             string                 `bson:"_id,omitempty" json:"id"`
-	Name           string                 `json:"name"`
-	Image          string                 `json:"image"`
-	Command        string                 `json:"command"`
-	NSName         string                 `json:"ns_name" bson:"ns_name"`
-	Replicas       *uint64                `json:"replicas"`
-	Parallelism    uint64                 `json:"parallelism"`
-	EnvVariables   []ServiceEnvVariable   `json:"env" bson:"env_vars"`
-	PublishedPorts []ServicePublishedPort `json:"published_ports" bson:"published_ports"`
-	ApplicationID  string                 `bson:"application_id,omitempty" json:"application_id,omitempty"`
-	UserID         string                 `bson:"user_id" json:"-"`
-	Volumes        []ServiceVolume        `bson:"volumes" json:"volumes"`
-	Application    Application            `bson:"-" json:"-"`
-	Status         []ServiceStatusStruct  `bson:"-" json:"status,omitempty"`
+	ID                string                 `bson:"_id,omitempty" json:"id"`
+	Name              string                 `json:"name"`
+	Image             string                 `json:"image"`
+	Command           string                 `json:"command"`
+	NSName            string                 `json:"ns_name" bson:"ns_name"`
+	Replicas          *uint64                `json:"replicas"`
+	Parallelism       uint64                 `json:"parallelism"`
+	EnvVariables      []ServiceEnvVariable   `json:"env" bson:"env_vars"`
+	PublishedPorts    []ServicePublishedPort `json:"published_ports" bson:"published_ports"`
+	FrontendEndpoints []FrontendEndpoint     `json:"frontend_endpoints" bson:"frontend_endpoints"`
+	ApplicationID     string                 `bson:"application_id,omitempty" json:"application_id,omitempty"`
+	UserID            string                 `bson:"user_id" json:"-"`
+	Volumes           []ServiceVolume        `bson:"volumes" json:"volumes"`
+	Application       Application            `bson:"-" json:"-"`
+	Status            []ServiceStatusStruct  `bson:"-" json:"status,omitempty"`
 }
 
 // GetService return service if it exists
@@ -139,6 +148,7 @@ func (s *Service) UpdateParams(newService *Service) (errors []string) {
 	s.Command = newService.Command
 	s.Replicas = newService.Replicas
 	s.Parallelism = newService.Parallelism
+	s.FrontendEndpoints = newService.FrontendEndpoints
 
 	var volumes = make([]ServiceVolume, 0)
 	for _, vol := range newService.Volumes {
