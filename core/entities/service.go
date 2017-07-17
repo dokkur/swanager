@@ -51,10 +51,10 @@ type ServiceVolume struct {
 
 // FrontendEndpoint - represents frontend endpoint
 type FrontendEndpoint struct {
-	Domain       string `json:"domain"`
-	InternalPort uint32 `json:"internal_port"`
-	ExternalPort uint32 `json:"external_port"`
-	Disabled     bool   `json:"disabled"`
+	Domain       string `json:"domain" bson:"domain"`
+	InternalPort uint32 `json:"internal_port" bson:"internal_port"`
+	ExternalPort uint32 `json:"external_port" bsin:"external_port"`
+	Disabled     bool   `json:"disabled" bson:"disabled"`
 }
 
 // Service describes service entity

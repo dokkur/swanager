@@ -34,7 +34,7 @@ func (nl NodeList) Process() {
 		nl.errorChan <- fmt.Errorf("Node list error: %s\n", err.Error())
 	}
 
-	if nl.OnlyAvailable {
+	if !nl.OnlyAvailable {
 		nl.responseChan <- nodes
 		return
 	}

@@ -1,6 +1,10 @@
 package vampRouter
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"sync"
 
 	"github.com/magneticio/vamp-router/haproxy"
@@ -12,16 +16,19 @@ import (
 type VampRouter struct {
 	URL string
 
+	nodes []entities.Node
+
 	frontendsMutex sync.Mutex
-	frontends      []haproxy.Frontend
+	frontends      map[uint32]haproxy.Frontend
 
 	backendsMutex sync.Mutex
 	backends      []haproxy.Backend
 }
 
 // Update updates vamp-router configuration
-func (vr *VampRouter) Update(services []entities.Service) {
+func (vr *VampRouter) Update(services []entities.Service, nodes []entities.Node) {
 	vr.cleanup()
+	vr.nodes = nodes
 
 	if len(services) == 0 {
 		return
@@ -40,6 +47,33 @@ func (vr *VampRouter) Update(services []entities.Service) {
 		}(service, &wg)
 	}
 	wg.Wait()
+	// spew.Dump(vr.frontends)
+	// spew.Dump(vr.backends)
+
+	frontends := make([]*haproxy.Frontend, 0, len(vr.frontends))
+	for _, front := range vr.frontends {
+		frontends = append(frontends, &front)
+	}
+
+	backends := make([]*haproxy.Backend, 0, len(vr.backends))
+	for _, back := range vr.backends {
+		backends = append(backends, &back)
+	}
+
+	config := haproxy.Config{
+		Backends:  backends,
+		Frontends: frontends,
+		Routes:    make([]haproxy.Route, 0),
+	}
+
+	configJSON, err := json.Marshal(config)
+	if err != nil {
+		return
+	}
+
+	fmt.Println(string(configJSON))
+
+	http.Post(vr.URL+"/config", "application/json", bytes.NewReader(configJSON))
 }
 
 func (vr *VampRouter) parseService(service entities.Service) {
@@ -51,13 +85,65 @@ func (vr *VampRouter) parseService(service entities.Service) {
 func (vr *VampRouter) parseEndpoint(service entities.Service,
 	endpoint entities.FrontendEndpoint) {
 
+	backendName := fmt.Sprintf("swarm_%s_%d", service.NSName, endpoint.ExternalPort)
+	filterName := fmt.Sprintf("front_%s_%d", service.NSName, endpoint.InternalPort)
+
+	vr.addFrontendFilter(endpoint.ExternalPort, haproxy.Filter{
+		Name:        filterName,
+		Destination: backendName,
+		Condition:   fmt.Sprintf("hdr(Host) -i %s", endpoint.Domain),
+	})
+
+	vr.addBackend(haproxy.Backend{
+		Name:      backendName,
+		Mode:      "http",
+		ProxyMode: true,
+		Options: haproxy.ProxyOptions{
+			ForwardFor: true,
+			HttpCheck:  true,
+		},
+		Servers: vr.getServers(endpoint.InternalPort),
+	})
 }
 
-func (vr *VampRouter) addFrontend(front haproxy.Frontend) {
+func (vr *VampRouter) getServers(port uint32) []*haproxy.ServerDetail {
+	servers := make([]*haproxy.ServerDetail, 0)
+
+	for _, node := range vr.nodes {
+		servers = append(servers, &haproxy.ServerDetail{
+			Name:          node.ID,
+			Host:          node.Addr,
+			Port:          int(port),
+			Check:         true,
+			CheckInterval: 10,
+		})
+	}
+
+	return servers
+}
+
+func (vr *VampRouter) addFrontendFilter(port uint32, filter haproxy.Filter) {
 	vr.frontendsMutex.Lock()
 	defer vr.frontendsMutex.Unlock()
 
-	vr.frontends = append(vr.frontends, front)
+	if _, ok := vr.frontends[port]; !ok {
+
+		vr.frontends[port] = haproxy.Frontend{
+			Name:           fmt.Sprintf("port%d", port),
+			BindIp:         "0.0.0.0",
+			BindPort:       int(port),
+			DefaultBackend: "default",
+			Mode:           "http",
+			Options: haproxy.ProxyOptions{
+				HttpClose: true,
+			},
+		}
+	}
+
+	front := vr.frontends[port]
+	front.Filters = append(front.Filters, &filter)
+
+	vr.frontends[port] = front
 }
 
 func (vr *VampRouter) addBackend(back haproxy.Backend) {
@@ -73,6 +159,6 @@ func (vr *VampRouter) cleanup() {
 	vr.backendsMutex.Lock()
 	defer vr.backendsMutex.Unlock()
 
-	vr.frontends = make([]haproxy.Frontend, 0)
+	vr.frontends = make(map[uint32]haproxy.Frontend, 0)
 	vr.backends = make([]haproxy.Backend, 0)
 }

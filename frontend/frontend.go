@@ -10,31 +10,43 @@ import (
 
 // Updatable notifies some component with service
 type Updatable interface {
-	Update([]entities.Service)
+	Update([]entities.Service, []entities.Node)
 }
 
 var frontends = make([]Updatable, 0)
 
 func init() {
-	frontends = append(frontends, vampRouter.VampRouter{URL: "http://localhost:345345"})
+	frontends = append(frontends, &vampRouter.VampRouter{
+		URL: "http://localhost:10001/v1",
+	})
 }
 
 // Update updates frontend config
 func Update() {
-	cmd, respChan, errChan := command.NewServiceListCommand(command.ServiceList{WithStatuses: true})
+	list, listRespChan, listErrChan := command.NewServiceListCommand(command.ServiceList{WithStatuses: true})
 
-	command.RunAsync(cmd)
+	nodeList, nodesRespChan, nodesErrChan := command.NewNodeListCommand(command.NodeList{OnlyAvailable: true})
+
+	command.RunAsync(list)
+	command.RunAsync(nodeList)
 
 	runningServices := make([]entities.Service, 0)
+	var nodes []entities.Node
 
 	select {
-	case services := <-respChan:
+	case services := <-listRespChan:
 		for _, service := range services {
 			if len(service.Status) > 0 {
 				runningServices = append(runningServices, service)
 			}
 		}
-	case <-errChan:
+	case <-listErrChan:
+		return
+	}
+
+	select {
+	case nodes = <-nodesRespChan:
+	case <-nodesErrChan:
 		return
 	}
 
@@ -43,7 +55,7 @@ func Update() {
 		wg.Add(1)
 		go func(front Updatable, runServs []entities.Service, wg *sync.WaitGroup) {
 			defer wg.Done()
-			front.Update(runServs)
+			front.Update(runServs, nodes)
 		}(frontend, runningServices, &wg)
 	}
 	wg.Wait()
