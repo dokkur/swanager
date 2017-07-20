@@ -22,7 +22,7 @@ type VampRouter struct {
 	frontends      map[uint32]haproxy.Frontend
 
 	backendsMutex sync.Mutex
-	backends      []haproxy.Backend
+	backends      []*haproxy.Backend
 }
 
 // Update updates vamp-router configuration
@@ -55,13 +55,8 @@ func (vr *VampRouter) Update(services []entities.Service, nodes []entities.Node)
 		frontends = append(frontends, &front)
 	}
 
-	backends := make([]*haproxy.Backend, 0, len(vr.backends))
-	for _, back := range vr.backends {
-		backends = append(backends, &back)
-	}
-
 	config := haproxy.Config{
-		Backends:  backends,
+		Backends:  vr.backends,
 		Frontends: frontends,
 		Routes:    make([]haproxy.Route, 0),
 	}
@@ -70,8 +65,6 @@ func (vr *VampRouter) Update(services []entities.Service, nodes []entities.Node)
 	if err != nil {
 		return
 	}
-
-	fmt.Println(string(configJSON))
 
 	http.Post(vr.URL+"/config", "application/json", bytes.NewReader(configJSON))
 }
@@ -150,7 +143,7 @@ func (vr *VampRouter) addBackend(back haproxy.Backend) {
 	vr.backendsMutex.Lock()
 	defer vr.backendsMutex.Unlock()
 
-	vr.backends = append(vr.backends, back)
+	vr.backends = append(vr.backends, &back)
 }
 
 func (vr *VampRouter) cleanup() {
@@ -160,5 +153,5 @@ func (vr *VampRouter) cleanup() {
 	defer vr.backendsMutex.Unlock()
 
 	vr.frontends = make(map[uint32]haproxy.Frontend, 0)
-	vr.backends = make([]haproxy.Backend, 0)
+	vr.backends = make([]*haproxy.Backend, 0)
 }

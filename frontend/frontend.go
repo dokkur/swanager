@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/dokkur/swanager/command"
+	"github.com/dokkur/swanager/config"
 	"github.com/dokkur/swanager/core/entities"
 	vampRouter "github.com/dokkur/swanager/frontend/vamp_router"
 )
@@ -14,15 +15,27 @@ type Updatable interface {
 }
 
 var frontends = make([]Updatable, 0)
+var lock sync.Mutex
 
 func init() {
-	frontends = append(frontends, &vampRouter.VampRouter{
-		URL: "http://localhost:10001/v1",
-	})
+	if config.VampRouterURL != "" {
+		frontends = append(frontends, &vampRouter.VampRouter{
+			URL: config.VampRouterURL,
+		})
+	}
 }
 
 // Update updates frontend config
+//   - Only one update can be run at a time, others will be blocked, consider to run it in coroutine
 func Update() {
+	if len(frontends) == 0 {
+		return
+	}
+
+	// Only one update at a time
+	lock.Lock()
+	defer lock.Unlock()
+
 	list, listRespChan, listErrChan := command.NewServiceListCommand(command.ServiceList{WithStatuses: true})
 
 	nodeList, nodesRespChan, nodesErrChan := command.NewNodeListCommand(command.NodeList{OnlyAvailable: true})
