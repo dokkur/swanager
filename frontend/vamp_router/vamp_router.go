@@ -66,7 +66,9 @@ func (vr *VampRouter) Update(services []entities.Service, nodes []entities.Node)
 		return
 	}
 
-	http.Post(vr.URL+"/config", "application/json", bytes.NewReader(configJSON))
+	// fmt.Println(string(configJSON))
+
+	http.Post(vr.URL+"/v1/config", "application/json", bytes.NewReader(configJSON))
 }
 
 func (vr *VampRouter) parseService(service entities.Service) {
@@ -78,8 +80,8 @@ func (vr *VampRouter) parseService(service entities.Service) {
 func (vr *VampRouter) parseEndpoint(service entities.Service,
 	endpoint entities.FrontendEndpoint) {
 
-	backendName := fmt.Sprintf("swarm_%s_%d", service.NSName, endpoint.ExternalPort)
-	filterName := fmt.Sprintf("front_%s_%d", service.NSName, endpoint.InternalPort)
+	backendName := fmt.Sprintf("swarm_%s_%d", service.NSName, endpoint.InternalPort)
+	filterName := fmt.Sprintf("front_%s_%d", service.NSName, endpoint.ExternalPort)
 
 	vr.addFrontendFilter(endpoint.ExternalPort, haproxy.Filter{
 		Name:        filterName,

@@ -31,7 +31,8 @@ var (
 	VampRouterURL string
 )
 
-func init() {
+// Init - loads config
+func Init() {
 	loadConfigFile()
 
 	flag.StringVar(&Port, "p", "4945", "Api port")
@@ -52,7 +53,7 @@ func init() {
 	DatabaseName = getEnvValue("SWANAGER_DB_NAME", DatabaseName)
 	MountPathPrefix = getEnvValue("SWANAGER_PATH_PREFIX", MountPathPrefix)
 	LocalSecretKey = getEnvValue("SWANAGER_LOCAL_SECRET_KEY", LocalSecretKey)
-	LocalSecretKey = getEnvValue("SWANAGER_VAMP_ROUTER_URL", VampRouterURL)
+	VampRouterURL = getEnvValue("SWANAGER_VAMP_ROUTER_URL", VampRouterURL)
 }
 
 func getEnvValue(varName string, currentValue string) string {

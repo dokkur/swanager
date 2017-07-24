@@ -148,7 +148,6 @@ func (s *Service) UpdateParams(newService *Service) (errors []string) {
 	s.Command = newService.Command
 	s.Replicas = newService.Replicas
 	s.Parallelism = newService.Parallelism
-	s.FrontendEndpoints = newService.FrontendEndpoints
 
 	var volumes = make([]ServiceVolume, 0)
 	for _, vol := range newService.Volumes {
@@ -204,6 +203,23 @@ func (s *Service) UpdateParams(newService *Service) (errors []string) {
 		})
 	}
 	s.PublishedPorts = ports
+
+	var frontends = make([]FrontendEndpoint, 0)
+	for _, frontend := range newService.FrontendEndpoints {
+		if frontend.InternalPort == 0 || frontend.InternalPort > 65535 ||
+			frontend.ExternalPort == 0 || frontend.ExternalPort > 65535 {
+			errors = append(errors, fmt.Sprintf("Internal port (%d) or External port (%d) is 0 or greather than 65535", frontend.InternalPort, frontend.ExternalPort))
+			continue
+		}
+
+		frontends = append(frontends, FrontendEndpoint{
+			Domain:       frontend.Domain,
+			InternalPort: frontend.InternalPort,
+			ExternalPort: frontend.ExternalPort,
+			Disabled:     frontend.Disabled,
+		})
+	}
+	s.FrontendEndpoints = frontends
 
 	return
 }
